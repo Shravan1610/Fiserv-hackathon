@@ -1,8 +1,9 @@
 # Intelligent Expense Categorizer — Hackathon Build Plan
 
 **Event:** Fintech Hackathon · 2–3 Hour POC  
-**Stack:** Python (Flask) · Next.js · shadcn/ui · Multi-Agent Pipeline  
-**Structure:** Featurebase monorepo · 3 isolated tracks · merge at the end  
+**Stack:** Python (Flask) · PostgreSQL · Next.js · shadcn/ui · Multi-Agent Pipeline  
+**Team:** 4 people — Backend split across 2 devs (User 1 + User 2), 1 frontend, 1 integration  
+**Structure:** Monorepo · 4 parallel tracks · merge at the end  
 
 ---
 
