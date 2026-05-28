@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
+import { Tooltip } from "recharts"
 import { cn } from "@/lib/utils"
 
 export type ChartConfig = Record<string, { label?: string; color?: string }>
