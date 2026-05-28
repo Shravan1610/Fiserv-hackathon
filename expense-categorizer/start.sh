@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Intelligent Expense Categorizer — local dev launcher
-# Starts Flask backend (port 5000) + Next.js frontend (port 3000)
+# Starts Flask backend (port 5001) + Next.js frontend (port 3000)
 # Stack: Python · PostgreSQL · Tesseract (+ poppler for PDFs)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -104,7 +104,7 @@ if [[ -f ".env" ]]; then
   fi
 fi
 
-echo "  · Starting Flask on http://localhost:5000"
+echo "  · Starting Flask on http://localhost:5001"
 python run.py >"$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 deactivate
@@ -132,7 +132,7 @@ FRONTEND_PID=$!
 sleep 2
 echo ""
 echo "──────────────────────────────────────────────"
-echo "  Backend  → http://localhost:5000   (PID $BACKEND_PID)"
+echo "  Backend  → http://localhost:5001   (PID $BACKEND_PID)"
 echo "  Frontend → http://localhost:3000   (PID $FRONTEND_PID)"
 echo "  Postgres → $PG_USER@$PG_HOST:$PG_PORT/$PG_DB"
 echo "  Logs     → $LOG_DIR/{backend,frontend}.log"

@@ -6,7 +6,7 @@ AI-powered receipt OCR and expense categorization. Upload a receipt image → ge
 
 - **Backend:** Python · Flask · Tesseract OCR · Gemini 1.5 Flash
 - **Frontend:** Next.js 14 · shadcn/ui · Recharts · TypeScript
-- **DB:** SQLite
+- **DB:** PostgreSQL
 
 ## Run Locally
 
@@ -16,8 +16,8 @@ AI-powered receipt OCR and expense categorization. Upload a receipt image → ge
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # add your GEMINI_API_KEY
-python run.py          # → http://localhost:5000
+cp .env.example .env   # add your GEMINI_API_KEY + DATABASE_URL
+python run.py          # → http://localhost:5001
 ```
 
 ### Frontend
@@ -44,7 +44,7 @@ Agent 2 — Categorization (rule-based + Gemini fallback)
     ↓
 Agent 3 — Insights (rule-based summary)
     ↓
-SQLite → REST API → Next.js dashboard
+Postgres → REST API → Next.js dashboard
 ```
 
 ## Scoring
