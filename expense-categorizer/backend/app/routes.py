@@ -15,15 +15,15 @@ def upload():
         return jsonify({"error": "No file uploaded"}), 400
 
     raw_text = run_ocr(file)
-    structured = extract_fields(raw_text)
-    category = categorize(structured)
+    structured = extract_fields(raw_text)         # Agent 1
+    category = categorize(structured)             # Agent 2
     structured["category"] = category["category"]
     structured["confidence"] = category["confidence"]
     structured["id"] = str(uuid.uuid4())
 
     save_expense(structured)
     all_expenses = get_all_expenses()
-    insight = generate_insight(structured, all_expenses)
+    insight = generate_insight(structured, all_expenses)  # Agent 3
     structured["insight"] = insight
 
     return jsonify(structured), 200
@@ -31,7 +31,6 @@ def upload():
 @main.route("/api/expenses", methods=["GET"])
 def expenses():
     data = get_all_expenses()
-    data["summary"]["insight"] = generate_insight({}, data)
     return jsonify(data), 200
 
 @main.route("/api/expenses/<expense_id>", methods=["PATCH"])
