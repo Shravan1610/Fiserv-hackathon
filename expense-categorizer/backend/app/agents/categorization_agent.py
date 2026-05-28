@@ -116,3 +116,39 @@ def categorize(structured: dict) -> dict:
     except Exception as e:
         log.warning("LLM categorization failed for '%s': %s", merchant, e)
         return {"category": "Other", "confidence": 0.5}
+
+
+ANOMALY_THRESHOLD = 1.5
+MIN_HISTORY_FOR_ANOMALY = 2
+
+
+def detect_anomaly(structured: dict, history: list[dict]) -> dict:
+    """Flag expense if amount > 1.5x rolling per-merchant average (>=2 priors)."""
+    merchant = (structured.get("merchant") or "").strip().lower()
+    amount = structured.get("amount")
+    if not merchant or not amount or amount <= 0:
+        return {"is_anomaly": False, "anomaly_reason": None}
+
+    own_id = structured.get("id")
+    prior = []
+    for e in history:
+        em = e.get("merchant")
+        if not em or em.strip().lower() != merchant:
+            continue
+        if not e.get("amount"):
+            continue
+        if own_id and e.get("id") == own_id:
+            continue
+        prior.append(e["amount"])
+
+    if len(prior) < MIN_HISTORY_FOR_ANOMALY:
+        return {"is_anomaly": False, "anomaly_reason": None}
+
+    avg = sum(prior) / len(prior)
+    if avg > 0 and amount > ANOMALY_THRESHOLD * avg:
+        pct = int((amount / avg - 1) * 100)
+        return {
+            "is_anomaly": True,
+            "anomaly_reason": f"{pct}% above your usual Rs. {avg:.0f} at {structured.get('merchant')}",
+        }
+    return {"is_anomaly": False, "anomaly_reason": None}

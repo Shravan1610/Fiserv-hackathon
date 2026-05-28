@@ -1,85 +1,114 @@
 "use client"
-import { useState, useRef } from "react"
+import { useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Upload, CheckCircle, Loader2 } from "lucide-react"
-import { getApiErrorMessage, uploadReceipt } from "@/lib/api"
-import { UploadResponse } from "@/types/expense"
+import { Loader2, Upload } from "lucide-react"
+import { extractReceipt, getApiErrorMessage } from "@/lib/api"
+import { ExtractResponse } from "@/types/expense"
+import { ReviewCard } from "./ReviewCard"
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Food: "bg-orange-100 text-orange-800",
-  Travel: "bg-blue-100 text-blue-800",
-  Shopping: "bg-purple-100 text-purple-800",
-  Entertainment: "bg-pink-100 text-pink-800",
-  Healthcare: "bg-green-100 text-green-800",
-  Utilities: "bg-yellow-100 text-yellow-800",
-  Education: "bg-indigo-100 text-indigo-800",
-  Other: "bg-gray-100 text-gray-700",
+interface Props {
+  onUploadSuccess: () => void
 }
-
-interface Props { onUploadSuccess: (result: UploadResponse) => void }
 
 export function UploadCard({ onUploadSuccess }: Props) {
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<UploadResponse | null>(null)
+  const [draft, setDraft] = useState<ExtractResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  function resetInput() {
+    if (inputRef.current) inputRef.current.value = ""
+  }
+
   async function handleFile(file: File) {
-    setLoading(true); setError(null); setResult(null)
+    setLoading(true)
+    setError(null)
+    setDraft(null)
     try {
-      const res = await uploadReceipt(file)
-      setResult(res)
-      onUploadSuccess(res)
+      const res = await extractReceipt(file)
+      setDraft(res)
     } catch (err) {
       setError(getApiErrorMessage(err, "Upload failed. Please try again."))
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+      resetInput()
+    }
+  }
+
+  function handleSaved() {
+    setDraft(null)
+    onUploadSuccess()
+  }
+
+  function handleDiscard() {
+    setDraft(null)
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader><CardTitle className="text-base font-medium">Upload Receipt</CardTitle></CardHeader>
-      <CardContent>
-        <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
-          onClick={() => inputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors
-            ${dragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
-        >
-          <input ref={inputRef} type="file" accept="image/*,application/pdf" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-          {loading
-            ? <><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">Processing receipt...</p></>
-            : <><Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium">Drop receipt here or click to upload</p>
-                <p className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF supported</p></>}
-        </div>
-
-        {error && <p className="text-sm text-destructive mt-3">{error}</p>}
-
-        {result && (
-          <div className="mt-4 rounded-lg border p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Extracted successfully</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <span className="text-muted-foreground">Merchant</span><span className="font-medium">{result.merchant}</span>
-              <span className="text-muted-foreground">Amount</span><span className="font-medium">Rs. {(result.amount ?? 0).toLocaleString("en-IN")}</span>
-              <span className="text-muted-foreground">Date</span><span>{result.date}</span>
-              <span className="text-muted-foreground">Category</span>
-              <Badge className={CATEGORY_COLORS[result.category]}>{result.category}</Badge>
-            </div>
-            {result.insight && (
-              <p className="text-xs text-muted-foreground border-t pt-2 mt-2">{result.insight}</p>
+    <div className="flex flex-col gap-4">
+      <Card className="w-full rounded-2xl border-white/70 bg-white/82 shadow-[0_12px_34px_rgba(15,23,42,0.06)]">
+        <CardHeader className="space-y-2 px-6 pb-5 pt-6">
+          <CardTitle className="text-lg font-semibold">Upload a new receipt</CardTitle>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            We'll OCR the receipt, run Gemini twice (extract + verify), and let you review before anything is saved.
+          </p>
+        </CardHeader>
+        <CardContent className="px-6 pb-6 pt-0">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragging(true)
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDragging(false)
+              const f = e.dataTransfer.files[0]
+              if (f) handleFile(f)
+            }}
+            onClick={() => inputRef.current?.click()}
+            className={`cursor-pointer rounded-2xl border border-dashed px-6 py-14 text-center transition-all
+              ${
+                dragging
+                  ? "border-primary bg-primary/[0.08] shadow-[0_10px_28px_rgba(47,127,142,0.12)]"
+                  : "border-border/80 bg-muted/[0.22] hover:border-primary/[0.35] hover:bg-primary/5 hover:shadow-[0_10px_28px_rgba(15,23,42,0.04)]"
+              }`}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFile(f)
+              }}
+            />
+            {loading ? (
+              <>
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
+                <p className="text-base font-semibold">Reading receipt…</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  OCR → Gemini extract → Gemini verify → categorize.
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload className="mx-auto mb-3 h-8 w-8 text-primary" />
+                <p className="text-base font-semibold">Drop a receipt here or click to browse</p>
+                <p className="mt-2 text-sm text-muted-foreground">JPG, PNG, WEBP, and PDF supported</p>
+              </>
             )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+        </CardContent>
+      </Card>
+
+      {draft && (
+        <ReviewCard draft={draft} onSaved={handleSaved} onDiscard={handleDiscard} />
+      )}
+    </div>
   )
 }

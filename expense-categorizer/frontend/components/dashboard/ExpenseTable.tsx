@@ -35,41 +35,63 @@ export function ExpenseTable({ expenses: initial, onCategoryChange }: ExpenseTab
     onCategoryChange?.()
   }
 
+  if (expenses.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border/75 bg-muted/30 px-6 py-10 text-center text-sm leading-6 text-muted-foreground">
+        No expenses yet. Upload a receipt to start building the ledger.
+      </div>
+    )
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Merchant</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Confidence</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {expenses.map(e => (
-          <TableRow key={e.id}>
-            <TableCell className="font-medium">{e.merchant ?? "-"}</TableCell>
-            <TableCell>Rs. {e.amount?.toLocaleString("en-IN")}</TableCell>
-            <TableCell className="text-muted-foreground">{e.date}</TableCell>
-            <TableCell>
-              {editing === e.id
-                ? <Select defaultValue={e.category} onValueChange={v => handleCategoryChange(e.id, v)}>
-                    <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{ALL_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
-                : <Badge className={`text-xs ${CATEGORY_COLORS[e.category]}`}>{e.category}</Badge>}
-            </TableCell>
-            <TableCell className="text-muted-foreground text-xs">{((e.confidence ?? 0) * 100).toFixed(0)}%</TableCell>
-            <TableCell>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditing(e.id === editing ? null : e.id)}>
-                {editing === e.id ? "Cancel" : "Edit"}
-              </Button>
-            </TableCell>
+    <div className="overflow-x-auto rounded-2xl border border-border/70 bg-white/70">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/25 hover:bg-muted/25">
+            <TableHead className="h-11 px-4 text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80">Merchant</TableHead>
+            <TableHead className="text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80">Amount</TableHead>
+            <TableHead className="text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80">Date</TableHead>
+            <TableHead className="text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80">Category</TableHead>
+            <TableHead className="text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80">Confidence</TableHead>
+            <TableHead className="text-[0.72rem] uppercase tracking-[0.14em] text-muted-foreground/80"></TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {expenses.map(e => (
+            <TableRow
+              key={e.id}
+              className={e.is_anomaly ? "border-l-2 border-l-red-400 bg-red-50/80 hover:bg-red-100/70" : "hover:bg-muted/20"}
+            >
+              <TableCell className="px-4 py-3.5 font-medium">
+                {e.merchant ?? "-"}
+                {e.is_anomaly && e.anomaly_reason && (
+                  <p className="mt-0.5 text-[11px] font-normal text-red-600">
+                    ⚠ {e.anomaly_reason}
+                  </p>
+                )}
+              </TableCell>
+              <TableCell className={e.is_anomaly ? "font-semibold text-red-700" : "font-medium"}>
+                Rs. {e.amount?.toLocaleString("en-IN")}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">{e.date}</TableCell>
+              <TableCell>
+                {editing === e.id
+                  ? <Select defaultValue={e.category} onValueChange={v => handleCategoryChange(e.id, v)}>
+                      <SelectTrigger className="h-8 w-36 rounded-xl border-border/80 bg-white text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{ALL_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  : <Badge className={`text-xs ${CATEGORY_COLORS[e.category]}`}>{e.category}</Badge>}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">{((e.confidence ?? 0) * 100).toFixed(0)}%</TableCell>
+              <TableCell>
+                <Button variant="ghost" size="sm" className="h-8 rounded-xl text-xs" onClick={() => setEditing(e.id === editing ? null : e.id)}>
+                  {editing === e.id ? "Cancel" : "Edit"}
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

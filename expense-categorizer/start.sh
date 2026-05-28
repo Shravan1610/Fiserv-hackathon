@@ -13,6 +13,8 @@ mkdir -p "$LOG_DIR"
 
 BACKEND_PID=""
 FRONTEND_PID=""
+BACKEND_USE_SQLITE=false
+FRONTEND_USE_MOCK=unknown
 
 cleanup() {
   echo ""
@@ -64,7 +66,8 @@ if command -v pg_isready >/dev/null 2>&1; then
   else
     echo "⚠ Postgres not reachable at $PG_HOST:$PG_PORT"
     echo "   Start it: brew services start postgresql@16"
-    echo "   Continuing — backend will error on DB calls until Postgres is up."
+    echo "   Falling back to SQLite for this run."
+    BACKEND_USE_SQLITE=true
   fi
 fi
 
@@ -105,7 +108,12 @@ if [[ -f ".env" ]]; then
 fi
 
 echo "  · Starting Flask on http://localhost:5001"
-python run.py >"$LOG_DIR/backend.log" 2>&1 &
+if [[ "$BACKEND_USE_SQLITE" == "true" ]]; then
+  echo "  · Backend storage: SQLite (temporary fallback)"
+  USE_SQLITE=true python run.py >"$LOG_DIR/backend.log" 2>&1 &
+else
+  python run.py >"$LOG_DIR/backend.log" 2>&1 &
+fi
 BACKEND_PID=$!
 deactivate
 
@@ -124,6 +132,14 @@ if [[ ! -f ".env.local" ]] && [[ -f ".env.local.example" ]]; then
   echo "  · Created frontend/.env.local from example (USE_MOCK=true)"
 fi
 
+if [[ -f ".env.local" ]]; then
+  if grep -qE "^NEXT_PUBLIC_USE_MOCK=true" .env.local; then
+    FRONTEND_USE_MOCK=true
+  elif grep -qE "^NEXT_PUBLIC_USE_MOCK=false" .env.local; then
+    FRONTEND_USE_MOCK=false
+  fi
+fi
+
 echo "  · Starting Next.js on http://localhost:3000"
 npm run dev >"$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
@@ -132,9 +148,20 @@ FRONTEND_PID=$!
 sleep 2
 echo ""
 echo "──────────────────────────────────────────────"
-echo "  Backend  → http://localhost:5001   (PID $BACKEND_PID)"
-echo "  Frontend → http://localhost:3000   (PID $FRONTEND_PID)"
-echo "  Postgres → $PG_USER@$PG_HOST:$PG_PORT/$PG_DB"
+echo "  Frontend App       → http://localhost:3000            (PID $FRONTEND_PID)"
+echo "  Dashboard Route    → http://localhost:3000/dashboard"
+echo "  Backend API        → http://localhost:5001/api/expenses (PID $BACKEND_PID)"
+echo "  Backend Root       → http://localhost:5001 returns 404 by design"
+if [[ "$BACKEND_USE_SQLITE" == "true" ]]; then
+  echo "  Backend Storage    → SQLite fallback"
+else
+  echo "  Backend Storage    → Postgres at $PG_USER@$PG_HOST:$PG_PORT/$PG_DB"
+fi
+if [[ "$FRONTEND_USE_MOCK" == "true" ]]; then
+  echo "  Frontend Data Mode → Mock data"
+elif [[ "$FRONTEND_USE_MOCK" == "false" ]]; then
+  echo "  Frontend Data Mode → Real backend API"
+fi
 echo "  Logs     → $LOG_DIR/{backend,frontend}.log"
 echo "──────────────────────────────────────────────"
 echo "Press Ctrl+C to stop both."
