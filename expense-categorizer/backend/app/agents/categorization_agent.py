@@ -9,14 +9,11 @@ Output shape: {"category": <str in CATEGORIES>, "confidence": <float 0..1>}
 
 import json
 import logging
-import os
 import re
 from typing import Optional
 
-import google.generativeai as genai
-from dotenv import load_dotenv
+from ..gemini_config import GEMINI_API_KEY, generate_text
 
-load_dotenv()
 log = logging.getLogger(__name__)
 
 CATEGORIES = [
@@ -72,15 +69,7 @@ SYSTEM_PROMPT = (
     "No explanation. No markdown. Confidence is a float between 0 and 1."
 )
 
-_LLM_READY = False
-try:
-    _key = os.getenv("GEMINI_API_KEY")
-    if _key:
-        genai.configure(api_key=_key)
-        _model = genai.GenerativeModel("gemini-1.5-flash")
-        _LLM_READY = True
-except Exception as e:
-    log.warning("Gemini LLM unavailable for categorization: %s", e)
+_LLM_READY = bool(GEMINI_API_KEY)
 
 
 def _rule_match(merchant: str) -> Optional[str]:
@@ -122,8 +111,8 @@ def categorize(structured: dict) -> dict:
 
     try:
         prompt = f"{SYSTEM_PROMPT}\n\nMerchant: {merchant}"
-        response = _model.generate_content(prompt)
-        return _validate(_parse_llm_json(response.text or ""))
+        raw = generate_text(prompt)
+        return _validate(_parse_llm_json(raw or ""))
     except Exception as e:
         log.warning("LLM categorization failed for '%s': %s", merchant, e)
         return {"category": "Other", "confidence": 0.5}

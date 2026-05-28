@@ -3,7 +3,7 @@ import { useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Upload, CheckCircle, Loader2 } from "lucide-react"
-import { uploadReceipt } from "@/lib/api"
+import { getApiErrorMessage, uploadReceipt } from "@/lib/api"
 import { UploadResponse } from "@/types/expense"
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -32,8 +32,8 @@ export function UploadCard({ onUploadSuccess }: Props) {
       const res = await uploadReceipt(file)
       setResult(res)
       onUploadSuccess(res)
-    } catch {
-      setError("Upload failed. Please try again.")
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Upload failed. Please try again."))
     } finally { setLoading(false) }
   }
 
@@ -69,7 +69,7 @@ export function UploadCard({ onUploadSuccess }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-muted-foreground">Merchant</span><span className="font-medium">{result.merchant}</span>
-              <span className="text-muted-foreground">Amount</span><span className="font-medium">Rs. {result.amount.toLocaleString("en-IN")}</span>
+              <span className="text-muted-foreground">Amount</span><span className="font-medium">Rs. {(result.amount ?? 0).toLocaleString("en-IN")}</span>
               <span className="text-muted-foreground">Date</span><span>{result.date}</span>
               <span className="text-muted-foreground">Category</span>
               <Badge className={CATEGORY_COLORS[result.category]}>{result.category}</Badge>

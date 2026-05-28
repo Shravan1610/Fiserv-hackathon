@@ -1,28 +1,97 @@
-"""Postgres-backed expense store.
+"""Expense store — SQLite (local dev) or PostgreSQL (team default).
 
-Public API (unchanged from the SQLite version so routes.py stays untouched):
-  - save_expense(expense: dict) -> None
-  - get_all_expenses() -> {"expenses": [...], "summary": {...}}
-  - update_category(expense_id: str, category: str) -> dict
-
-Connection config comes from env vars in this order of preference:
-  1. DATABASE_URL  (e.g. postgresql://user:pass@host:5432/dbname)
-  2. PGHOST / PGPORT / PGUSER / PGPASSWORD / PGDATABASE
+Set USE_SQLITE=true in .env when Postgres is not available.
 """
 
 import logging
 import os
+import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime
+from pathlib import Path
 from typing import Optional
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
 load_dotenv()
 log = logging.getLogger(__name__)
 
+USE_SQLITE = os.getenv("USE_SQLITE", "false").lower() in ("1", "true", "yes")
+
+# --- SQLite (plan.md Task 6) ---
+SQLITE_PATH = Path(__file__).parent.parent.parent / "data" / "expenses.db"
+
+SQLITE_CREATE = """
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    merchant TEXT,
+    amount REAL,
+    date TEXT,
+    category TEXT,
+    confidence REAL
+);
+"""
+
+
+def _sqlite_conn():
+    SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(SQLITE_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute(SQLITE_CREATE)
+    conn.commit()
+    return conn
+
+
+def _sqlite_save(expense: dict) -> None:
+    conn = _sqlite_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO expenses VALUES (?,?,?,?,?,?)",
+        (
+            expense["id"],
+            expense.get("merchant"),
+            expense.get("amount"),
+            expense.get("date"),
+            expense.get("category"),
+            expense.get("confidence", 0.9),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _sqlite_get_all() -> dict:
+    conn = _sqlite_conn()
+    rows = conn.execute("SELECT * FROM expenses ORDER BY date DESC").fetchall()
+    conn.close()
+    expenses = [dict(r) for r in rows]
+    by_category: dict = {}
+    for e in expenses:
+        cat = e.get("category") or "Other"
+        by_category[cat] = by_category.get(cat, 0.0) + (e.get("amount") or 0)
+    total = sum(e.get("amount") or 0 for e in expenses)
+    return {
+        "expenses": expenses,
+        "summary": {
+            "total": round(total, 2),
+            "by_category": {k: round(v, 2) for k, v in by_category.items()},
+            "insight": "",
+        },
+    }
+
+
+def _sqlite_update_category(expense_id: str, category: str) -> dict:
+    conn = _sqlite_conn()
+    cur = conn.execute(
+        "UPDATE expenses SET category=? WHERE id=?",
+        (category, expense_id),
+    )
+    updated = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return {"id": expense_id, "category": category, "updated": updated}
+
+
+# --- PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 PG_KW = {
     "host": os.getenv("PGHOST", "localhost"),
@@ -32,7 +101,7 @@ PG_KW = {
     "dbname": os.getenv("PGDATABASE", "expenses"),
 }
 
-CREATE_SQL = """
+PG_CREATE = """
 CREATE TABLE IF NOT EXISTS expenses (
     id          TEXT PRIMARY KEY,
     merchant    TEXT,
@@ -46,33 +115,33 @@ CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
 """
 
-_initialized = False
+_pg_initialized = False
 
 
-def _connect():
+def _pg_connect():
+    import psycopg2
     if DATABASE_URL:
         return psycopg2.connect(DATABASE_URL)
     return psycopg2.connect(**PG_KW)
 
 
 @contextmanager
-def get_conn():
-    """Yields a connection; ensures schema exists on first use."""
-    global _initialized
-    conn = _connect()
+def _pg_conn():
+    global _pg_initialized
+    import psycopg2
+    conn = _pg_connect()
     try:
-        if not _initialized:
+        if not _pg_initialized:
             with conn.cursor() as cur:
-                cur.execute(CREATE_SQL)
+                cur.execute(PG_CREATE)
             conn.commit()
-            _initialized = True
+            _pg_initialized = True
         yield conn
     finally:
         conn.close()
 
 
 def _coerce_date(value) -> Optional[date]:
-    """Accept 'YYYY-MM-DD', date, datetime, or None. Bad input → None."""
     if value is None or value == "":
         return None
     if isinstance(value, date) and not isinstance(value, datetime):
@@ -86,8 +155,8 @@ def _coerce_date(value) -> Optional[date]:
         return None
 
 
-def save_expense(expense: dict) -> None:
-    with get_conn() as conn, conn.cursor() as cur:
+def _pg_save(expense: dict) -> None:
+    with _pg_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO expenses (id, merchant, amount, date, category, confidence)
@@ -111,8 +180,9 @@ def save_expense(expense: dict) -> None:
         conn.commit()
 
 
-def get_all_expenses() -> dict:
-    with get_conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+def _pg_get_all() -> dict:
+    from psycopg2.extras import RealDictCursor
+    with _pg_conn() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             """
             SELECT id, merchant, amount, date, category, confidence
@@ -149,8 +219,8 @@ def get_all_expenses() -> dict:
     }
 
 
-def update_category(expense_id: str, category: str) -> dict:
-    with get_conn() as conn, conn.cursor() as cur:
+def _pg_update_category(expense_id: str, category: str) -> dict:
+    with _pg_conn() as conn, conn.cursor() as cur:
         cur.execute(
             "UPDATE expenses SET category = %s WHERE id = %s",
             (category, expense_id),
@@ -158,3 +228,16 @@ def update_category(expense_id: str, category: str) -> dict:
         updated = cur.rowcount > 0
         conn.commit()
     return {"id": expense_id, "category": category, "updated": updated}
+
+
+# --- Public API ---
+if USE_SQLITE:
+    log.info("Using SQLite database at %s", SQLITE_PATH)
+    save_expense = _sqlite_save
+    get_all_expenses = _sqlite_get_all
+    update_category = _sqlite_update_category
+else:
+    log.info("Using PostgreSQL database")
+    save_expense = _pg_save
+    get_all_expenses = _pg_get_all
+    update_category = _pg_update_category

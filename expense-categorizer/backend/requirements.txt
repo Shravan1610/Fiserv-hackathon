@@ -6,3 +6,4 @@ pdf2image==1.17.0
 google-generativeai==0.8.5
 python-dotenv==1.1.0
 psycopg2-binary==2.9.10
+certifi==2025.4.26

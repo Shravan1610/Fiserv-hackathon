@@ -13,9 +13,13 @@ export default function Home() {
   const [insight, setInsight] = useState("")
 
   const refresh = useCallback(async () => {
-    const d = await fetchExpenses()
-    setData(d)
-    setInsight(d.summary.insight)
+    try {
+      const d = await fetchExpenses()
+      setData(d)
+      setInsight(d.summary.insight || "")
+    } catch {
+      setInsight("")
+    }
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
@@ -59,7 +63,7 @@ export default function Home() {
                 <h2 className="text-base font-medium">All Expenses</h2>
               </div>
               <div className="px-6 py-4">
-                <ExpenseTable expenses={data.expenses} />
+                <ExpenseTable expenses={data.expenses} onCategoryChange={refresh} />
               </div>
             </div>
           </>

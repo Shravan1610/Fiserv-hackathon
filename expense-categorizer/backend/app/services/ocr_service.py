@@ -16,21 +16,23 @@ import pytesseract
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps
 from dotenv import load_dotenv
 
+from ..gemini_config import GEMINI_API_KEY, generate_with_image
+
 load_dotenv()
 log = logging.getLogger(__name__)
 
+# Windows: use default install path if tesseract is not on PATH
+if os.name == "nt":
+    _tesseract_exe = os.getenv(
+        "TESSERACT_CMD",
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    )
+    if os.path.isfile(_tesseract_exe):
+        pytesseract.pytesseract.tesseract_cmd = _tesseract_exe
+
 MIN_OCR_CHARS = 25  # below this we treat tesseract output as a failure
 
-_GEMINI_READY = False
-try:
-    import google.generativeai as genai
-    _key = os.getenv("GEMINI_API_KEY")
-    if _key:
-        genai.configure(api_key=_key)
-        _vision_model = genai.GenerativeModel("gemini-1.5-flash")
-        _GEMINI_READY = True
-except Exception as e:
-    log.warning("Gemini vision unavailable: %s", e)
+_GEMINI_READY = bool(GEMINI_API_KEY)
 
 
 def _load_image(file_storage) -> Image.Image:
@@ -80,8 +82,7 @@ def _gemini_vision_ocr(image: Image.Image) -> str:
             "Transcribe ALL text visible in this receipt verbatim. "
             "Preserve line breaks. Do not summarize. Do not add commentary."
         )
-        response = _vision_model.generate_content([prompt, image])
-        return (response.text or "").strip()
+        return generate_with_image(prompt, image).strip()
     except Exception as e:
         log.warning("Gemini vision OCR failed: %s", e)
         return ""

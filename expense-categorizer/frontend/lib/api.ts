@@ -1,15 +1,26 @@
-import axios from "axios"
+import axios, { isAxiosError } from "axios"
 import { ExpensesResponse, UploadResponse } from "@/types/expense"
 import { MOCK_EXPENSES, MOCK_UPLOAD } from "./mock-data"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001"
+const UPLOAD_TIMEOUT_MS = 120_000
+
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { error?: string } | undefined
+    if (data?.error) return data.error
+  }
+  return fallback
+}
 
 export async function uploadReceipt(file: File): Promise<UploadResponse> {
   if (USE_MOCK) return MOCK_UPLOAD
   const form = new FormData()
   form.append("receipt", file)
-  const { data } = await axios.post<UploadResponse>(`${BASE}/api/upload`, form)
+  const { data } = await axios.post<UploadResponse>(`${BASE}/api/upload`, form, {
+    timeout: UPLOAD_TIMEOUT_MS,
+  })
   return data
 }
 

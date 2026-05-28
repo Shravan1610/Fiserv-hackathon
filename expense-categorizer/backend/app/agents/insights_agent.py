@@ -1,11 +1,7 @@
 import json
-import os
 from typing import Any
 
-import google.generativeai as genai
-
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+# from ..gemini_config import generate_text  # optional LLM insights
 
 
 def generate_insight(latest: dict[str, Any], all_expenses: dict[str, Any]) -> str:

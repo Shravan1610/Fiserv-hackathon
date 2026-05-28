@@ -1,10 +1,7 @@
-import google.generativeai as genai
-import json, os, re
-from dotenv import load_dotenv
+import json
+import re
 
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+from ..gemini_config import generate_text
 
 SYSTEM_PROMPT = """
 You are a receipt data extraction specialist.
@@ -21,8 +18,7 @@ If a field cannot be found, use null.
 def extract_fields(raw_text: str) -> dict:
     prompt = f"{SYSTEM_PROMPT}\n\nOCR Text:\n{raw_text}"
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
+        text = generate_text(prompt).strip()
         text = re.sub(r"```json|```", "", text).strip()
         return json.loads(text)
     except Exception as e:

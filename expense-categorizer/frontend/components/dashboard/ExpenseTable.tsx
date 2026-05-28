@@ -15,7 +15,12 @@ const CATEGORY_COLORS: Record<string, string> = {
   Education:"bg-indigo-100 text-indigo-800", Other:"bg-gray-100 text-gray-700",
 }
 
-export function ExpenseTable({ expenses: initial }: { expenses: Expense[] }) {
+interface ExpenseTableProps {
+  expenses: Expense[]
+  onCategoryChange?: () => void
+}
+
+export function ExpenseTable({ expenses: initial, onCategoryChange }: ExpenseTableProps) {
   const [expenses, setExpenses] = useState(initial)
   const [editing, setEditing] = useState<string | null>(null)
 
@@ -27,6 +32,7 @@ export function ExpenseTable({ expenses: initial }: { expenses: Expense[] }) {
     await patchCategory(id, category)
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, category: category as Category } : e))
     setEditing(null)
+    onCategoryChange?.()
   }
 
   return (

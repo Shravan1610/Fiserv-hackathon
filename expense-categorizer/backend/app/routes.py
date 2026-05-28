@@ -57,6 +57,8 @@ def upload() -> Tuple[Response, int]:
             structured.get("error") or "Extraction failed", 422
         )
     structured = _normalize_extraction(structured)
+    if structured.get("amount") is None and not structured.get("merchant"):
+        return _json_error("Could not extract receipt data", 422)
 
     category = _safe_categorize(structured)  # Agent 2
     structured["category"] = category["category"]
@@ -78,6 +80,9 @@ def upload() -> Tuple[Response, int]:
 def expenses() -> Tuple[Response, int]:
     try:
         data = get_all_expenses()
+        if not data.get("summary", {}).get("insight"):
+            latest = data["expenses"][0] if data.get("expenses") else {}
+            data["summary"]["insight"] = generate_insight(latest, data)
         return jsonify(data), 200
     except Exception:
         return _json_error("Failed to load expenses", 500)
