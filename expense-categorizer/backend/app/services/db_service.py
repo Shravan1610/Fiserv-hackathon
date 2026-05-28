@@ -39,10 +39,11 @@ def get_all_expenses() -> dict:
     for e in expenses:
         cat = e.get("category", "Other")
         by_category[cat] = by_category.get(cat, 0) + (e.get("amount") or 0)
+    total = sum((e.get("amount") or 0) for e in expenses)
     return {
         "expenses": expenses,
         "summary": {
-            "total": sum(e.get("amount", 0) for e in expenses),
+            "total": total,
             "by_category": by_category,
             "insight": ""
         }

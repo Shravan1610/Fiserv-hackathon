@@ -31,6 +31,7 @@ def upload():
 @main.route("/api/expenses", methods=["GET"])
 def expenses():
     data = get_all_expenses()
+    data["summary"]["insight"] = generate_insight({}, data)
     return jsonify(data), 200
 
 @main.route("/api/expenses/<expense_id>", methods=["PATCH"])
