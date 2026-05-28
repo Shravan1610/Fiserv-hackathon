@@ -110,9 +110,9 @@ fi
 echo "  · Starting Flask on http://localhost:5001"
 if [[ "$BACKEND_USE_SQLITE" == "true" ]]; then
   echo "  · Backend storage: SQLite (temporary fallback)"
-  USE_SQLITE=true python run.py >"$LOG_DIR/backend.log" 2>&1 &
+  USE_SQLITE=true python run.py 2>&1 | tee "$LOG_DIR/backend.log" &
 else
-  python run.py >"$LOG_DIR/backend.log" 2>&1 &
+  python run.py 2>&1 | tee "$LOG_DIR/backend.log" &
 fi
 BACKEND_PID=$!
 deactivate
@@ -141,7 +141,7 @@ if [[ -f ".env.local" ]]; then
 fi
 
 echo "  · Starting Next.js on http://localhost:3000"
-npm run dev >"$LOG_DIR/frontend.log" 2>&1 &
+npm run dev 2>&1 | tee "$LOG_DIR/frontend.log" &
 FRONTEND_PID=$!
 
 # ── Wait & report ──────────────────────────────────────────────────────────────
@@ -165,5 +165,5 @@ fi
 echo "  Logs     → $LOG_DIR/{backend,frontend}.log"
 echo "──────────────────────────────────────────────"
 echo "Press Ctrl+C to stop both."
-
-wait
+echo ""
+tail -f "$LOG_DIR/backend.log" "$LOG_DIR/frontend.log"
