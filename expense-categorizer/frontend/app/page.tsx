@@ -29,7 +29,7 @@ export default function Home() {
     <main className="min-h-screen bg-background">
       <div className="border-b px-6 py-4">
         <h1 className="text-xl font-semibold">Expense Categorizer</h1>
-        <p className="text-sm text-muted-foreground">Upload receipts · auto-categorize · track spend</p>
+        <p className="text-sm text-muted-foreground">Upload receipts, auto-categorize, and track spend</p>
       </div>
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         {insight && <InsightsBanner insight={insight} />}
@@ -39,7 +39,7 @@ export default function Home() {
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-lg border bg-card p-4 text-center">
                 <p className="text-xs text-muted-foreground">Total Spend</p>
-                <p className="text-3xl font-semibold mt-1">₹{data.summary.total.toLocaleString("en-IN")}</p>
+                <p className="text-3xl font-semibold mt-1">Rs. {data.summary.total.toLocaleString("en-IN")}</p>
               </div>
               <div className="rounded-lg border bg-card p-4 text-center">
                 <p className="text-xs text-muted-foreground">Receipts</p>

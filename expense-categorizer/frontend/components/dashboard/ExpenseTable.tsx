@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,6 +18,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 export function ExpenseTable({ expenses: initial }: { expenses: Expense[] }) {
   const [expenses, setExpenses] = useState(initial)
   const [editing, setEditing] = useState<string | null>(null)
+
+  useEffect(() => {
+    setExpenses(initial)
+  }, [initial])
 
   async function handleCategoryChange(id: string, category: string) {
     await patchCategory(id, category)
@@ -40,8 +44,8 @@ export function ExpenseTable({ expenses: initial }: { expenses: Expense[] }) {
       <TableBody>
         {expenses.map(e => (
           <TableRow key={e.id}>
-            <TableCell className="font-medium">{e.merchant ?? "—"}</TableCell>
-            <TableCell>₹{e.amount?.toLocaleString("en-IN")}</TableCell>
+            <TableCell className="font-medium">{e.merchant ?? "-"}</TableCell>
+            <TableCell>Rs. {e.amount?.toLocaleString("en-IN")}</TableCell>
             <TableCell className="text-muted-foreground">{e.date}</TableCell>
             <TableCell>
               {editing === e.id

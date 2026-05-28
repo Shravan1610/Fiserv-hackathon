@@ -11,11 +11,11 @@ export const MOCK_EXPENSES: ExpensesResponse = {
   summary: {
     total: 1969,
     by_category: { Food: 540, Travel: 220, Entertainment: 199, Healthcare: 340, Shopping: 670, Utilities: 0, Education: 0, Other: 0 },
-    insight: "Biggest spend this session: Shopping ₹670",
+    insight: "Biggest spend this session: Shopping Rs. 670",
   },
 }
 
 export const MOCK_UPLOAD: UploadResponse = {
   id: "6", merchant: "Swiggy", amount: 380, date: "2026-05-28",
-  category: "Food", confidence: 0.98, insight: "You've spent ₹920 on Food this week."
+  category: "Food", confidence: 0.98, insight: "You've spent Rs. 920 on Food this week."
 }

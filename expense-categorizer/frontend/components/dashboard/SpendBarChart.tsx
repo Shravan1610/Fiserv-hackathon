@@ -19,8 +19,8 @@ export function SpendBarChart({ byCategory }: Props) {
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tickFormatter={v => `₹${v}`} tick={{ fontSize: 12 }} />
-            <ChartTooltip content={<ChartTooltipContent formatter={(v) => `₹${Number(v).toLocaleString("en-IN")}`} />} />
+            <YAxis tickFormatter={v => `Rs. ${v}`} tick={{ fontSize: 12 }} />
+            <ChartTooltip content={<ChartTooltipContent formatter={(v) => `Rs. ${Number(v).toLocaleString("en-IN")}`} />} />
             <Bar dataKey="value" fill="var(--color-value)" radius={[4,4,0,0]} />
           </BarChart>
         </ChartContainer>

@@ -1,7 +1,6 @@
 "use client"
 import { useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Upload, CheckCircle, Loader2 } from "lucide-react"
 import { uploadReceipt } from "@/lib/api"
@@ -54,7 +53,7 @@ export function UploadCard({ onUploadSuccess }: Props) {
             onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
           {loading
             ? <><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">Processing receipt…</p></>
+                <p className="text-sm text-muted-foreground">Processing receipt...</p></>
             : <><Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                 <p className="text-sm font-medium">Drop receipt here or click to upload</p>
                 <p className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF supported</p></>}
@@ -70,13 +69,13 @@ export function UploadCard({ onUploadSuccess }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-muted-foreground">Merchant</span><span className="font-medium">{result.merchant}</span>
-              <span className="text-muted-foreground">Amount</span><span className="font-medium">₹{result.amount.toLocaleString("en-IN")}</span>
+              <span className="text-muted-foreground">Amount</span><span className="font-medium">Rs. {result.amount.toLocaleString("en-IN")}</span>
               <span className="text-muted-foreground">Date</span><span>{result.date}</span>
               <span className="text-muted-foreground">Category</span>
               <Badge className={CATEGORY_COLORS[result.category]}>{result.category}</Badge>
             </div>
             {result.insight && (
-              <p className="text-xs text-muted-foreground border-t pt-2 mt-2">💡 {result.insight}</p>
+              <p className="text-xs text-muted-foreground border-t pt-2 mt-2">{result.insight}</p>
             )}
           </div>
         )}

@@ -3,7 +3,7 @@ import { ExpensesResponse, UploadResponse } from "@/types/expense"
 import { MOCK_EXPENSES, MOCK_UPLOAD } from "./mock-data"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001"
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 export async function uploadReceipt(file: File): Promise<UploadResponse> {
   if (USE_MOCK) return MOCK_UPLOAD
