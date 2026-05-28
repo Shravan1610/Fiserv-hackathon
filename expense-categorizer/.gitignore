@@ -1,6 +1,11 @@
 backend/venv/
 *.pyc
 __pycache__/
+
+# Environment files (API keys and secrets — never commit)
+.env
+.env.*
+!.env.example
 backend/.env
 frontend/.env.local
 frontend/.next/

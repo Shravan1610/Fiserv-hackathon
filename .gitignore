@@ -1,0 +1,6 @@
+# Environment files (API keys and secrets)
+.env
+.env.*
+!**/.env.example
+expense-categorizer/backend/.env
+expense-categorizer/frontend/.env.local
