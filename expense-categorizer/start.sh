@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Intelligent Expense Categorizer — local dev launcher
-# Starts the Flask backend (port 5000) and Next.js frontend (port 3000) together.
+# Starts Flask backend (port 5000) + Next.js frontend (port 3000)
+# Stack: Python · PostgreSQL · Tesseract (+ poppler for PDFs)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
@@ -27,11 +28,48 @@ require() {
   command -v "$1" >/dev/null 2>&1 || { echo "✗ Missing required command: $1"; exit 1; }
 }
 
+soft_require() {
+  command -v "$1" >/dev/null 2>&1 || echo "⚠ $1 not found — $2"
+}
+
+# ── Host-level dependency checks ───────────────────────────────────────────────
 require python3
 require npm
-command -v tesseract >/dev/null 2>&1 || echo "⚠ tesseract not found — OCR will fail. Install via: brew install tesseract"
+soft_require tesseract  "OCR will fail. Install: brew install tesseract"
+soft_require pdftoppm   "PDF receipts will fail. Install: brew install poppler"
+soft_require psql       "Postgres CLI missing. Install: brew install postgresql@16"
+
+# ── Postgres readiness ─────────────────────────────────────────────────────────
+PG_HOST="${PGHOST:-localhost}"
+PG_PORT="${PGPORT:-5432}"
+PG_USER="${PGUSER:-postgres}"
+PG_DB="${PGDATABASE:-expenses}"
+
+if command -v pg_isready >/dev/null 2>&1; then
+  if pg_isready -h "$PG_HOST" -p "$PG_PORT" -q; then
+    echo "✓ Postgres is up at $PG_HOST:$PG_PORT"
+
+    if command -v psql >/dev/null 2>&1; then
+      if ! psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$PG_DB"; then
+        echo "  · Database '$PG_DB' missing — creating it"
+        if command -v createdb >/dev/null 2>&1; then
+          createdb -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" "$PG_DB" 2>/dev/null \
+            && echo "  ✓ Created database '$PG_DB'" \
+            || echo "  ⚠ createdb failed — create '$PG_DB' manually"
+        fi
+      else
+        echo "  ✓ Database '$PG_DB' exists"
+      fi
+    fi
+  else
+    echo "⚠ Postgres not reachable at $PG_HOST:$PG_PORT"
+    echo "   Start it: brew services start postgresql@16"
+    echo "   Continuing — backend will error on DB calls until Postgres is up."
+  fi
+fi
 
 # ── Backend ────────────────────────────────────────────────────────────────────
+echo ""
 echo "→ Backend setup…"
 cd "$BACKEND_DIR"
 
@@ -53,12 +91,17 @@ fi
 if [[ ! -f ".env" ]]; then
   if [[ -f ".env.example" ]]; then
     cp .env.example .env
-    echo "  ⚠ Created backend/.env from example — edit it to set GEMINI_API_KEY"
+    echo "  ⚠ Created backend/.env from example — edit it to set GEMINI_API_KEY + DATABASE_URL"
   fi
 fi
 
-if [[ -f ".env" ]] && ! grep -q "^GEMINI_API_KEY=.\+" .env || grep -q "^GEMINI_API_KEY=your_key_here" .env 2>/dev/null; then
-  echo "  ⚠ GEMINI_API_KEY not set in backend/.env — extraction agent will fail"
+if [[ -f ".env" ]]; then
+  if ! grep -qE "^GEMINI_API_KEY=.+" .env || grep -q "^GEMINI_API_KEY=your_key_here" .env; then
+    echo "  ⚠ GEMINI_API_KEY not set in backend/.env — extraction + LLM categorization will fail"
+  fi
+  if ! grep -qE "^(DATABASE_URL|PGHOST)=" .env; then
+    echo "  ⚠ DATABASE_URL not set in backend/.env — using PG* defaults ($PG_USER@$PG_HOST:$PG_PORT/$PG_DB)"
+  fi
 fi
 
 echo "  · Starting Flask on http://localhost:5000"
@@ -67,6 +110,7 @@ BACKEND_PID=$!
 deactivate
 
 # ── Frontend ───────────────────────────────────────────────────────────────────
+echo ""
 echo "→ Frontend setup…"
 cd "$FRONTEND_DIR"
 
@@ -90,6 +134,7 @@ echo ""
 echo "──────────────────────────────────────────────"
 echo "  Backend  → http://localhost:5000   (PID $BACKEND_PID)"
 echo "  Frontend → http://localhost:3000   (PID $FRONTEND_PID)"
+echo "  Postgres → $PG_USER@$PG_HOST:$PG_PORT/$PG_DB"
 echo "  Logs     → $LOG_DIR/{backend,frontend}.log"
 echo "──────────────────────────────────────────────"
 echo "Press Ctrl+C to stop both."
